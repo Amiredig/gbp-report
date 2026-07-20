@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Amire — Google Business Profile Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#0f172a;--panel:#1e293b;--panel2:#273449;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--accent2:#a78bfa;--good:#10b981;--bad:#ef4444;--warn:#f59e0b;--card:#1e293b}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  .container{max-width:1500px;margin:0 auto;padding:24px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px}
+  h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-0.5px}
+  .subtitle{color:var(--muted);font-size:14px;margin-top:4px}
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px}
+  .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);font-weight:600}
+  .kpi-value{font-size:26px;font-weight:700;margin-top:8px}
+  .kpi-change{font-size:12px;margin-top:6px;font-weight:500}
+  .kpi-change.up{color:var(--good)}
+  .kpi-change.down{color:var(--bad)}
+  .kpi-change.flat{color:var(--muted)}
+  .client-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:24px}
+  .chip{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;user-select:none}
+  .chip:hover{border-color:var(--accent);color:var(--text)}
+  .chip.active{background:var(--accent);color:#0f172a;border-color:var(--accent)}
+  .section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px}
+  .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+  .section-title{font-size:18px;font-weight:600;margin:0}
+  .charts-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:18px;margin-bottom:24px}
+  .chart-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;min-height:300px}
+  .chart-box h3{margin:0 0 12px 0;font-size:14px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+  .chart-box canvas{max-height:240px}
+  .charts-row-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-bottom:24px}
+  .pct{font-size:12px;display:inline-block;padding:2px 7px;border-radius:4px;font-weight:600}
+  .pct.up{background:rgba(16,185,129,0.15);color:var(--good)}
+  .pct.down{background:rgba(239,68,68,0.15);color:var(--bad)}
+  .pct.flat{background:rgba(148,163,184,0.15);color:var(--muted)}
+  .pct.warn{background:rgba(245,158,11,0.15);color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:10px 12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.4px;white-space:nowrap}
+  td{padding:11px 12px;border-bottom:1px solid var(--border)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--panel2)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .kw-name{font-weight:600;color:var(--text)}
+  .breakdown-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .breakdown-row:last-child{margin-bottom:0}
+  .breakdown-label{font-size:12px;color:var(--muted);width:160px;flex-shrink:0}
+  .breakdown-track{flex:1;height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+  .breakdown-fill{height:100%;border-radius:3px}
+  .breakdown-count{font-size:12px;font-weight:600;color:var(--text);width:52px;text-align:right;flex-shrink:0}
+  .breakdown-pct{font-size:11px;color:var(--muted);width:40px;text-align:right;flex-shrink:0}
+  .insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .insight{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:16px;border-left:3px solid var(--accent)}
+  .insight.good{border-left-color:var(--good)}
+  .insight.bad{border-left-color:var(--bad)}
+  .insight.warn{border-left-color:var(--warn)}
+  .insight-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
+  .insight-body{font-size:12px;color:var(--muted);line-height:1.6}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid var(--border)}
+  .port-badge{font-size:11px;background:rgba(56,189,248,0.15);color:var(--accent);padding:3px 8px;border-radius:4px;font-weight:600;letter-spacing:0.03em}
+  @media(max-width:600px){h1{font-size:22px}.kpi-value{font-size:20px}.container{padding:14px}th,td{padding:8px 6px;font-size:12px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div>
+      <h1>Amire — Google Business Profile Dashboard</h1>
+      <div class="subtitle" id="dashSubtitle">Portfolio overview · 19 profiles · July 2025 – June 2026</div>
+    </div>
+    <span class="port-badge" id="portBadge">19 PROFILES</span>
+  </header>
+
+  <!-- Portfolio KPIs (shown when All selected) -->
+  <div id="portfolioKPIs">
+    <div class="summary-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Portfolio Views</div>
+        <div class="kpi-value" style="color:var(--accent)">565,263</div>
+        <div class="kpi-change flat">Across all 19 profiles</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Portfolio Interactions</div>
+        <div class="kpi-value" style="color:var(--accent2)">225,635</div>
+        <div class="kpi-change flat">All action types combined</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Website Clicks</div>
+        <div class="kpi-value" style="color:var(--good)">33,658</div>
+        <div class="kpi-change flat">14.9% of interactions</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Direction Requests</div>
+        <div class="kpi-value" style="color:var(--warn)">163,240</div>
+        <div class="kpi-change flat">72.3% of interactions</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Action Rate</div>
+        <div class="kpi-value">39.9%</div>
+        <div class="kpi-change flat">Views that became actions</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active Profiles</div>
+        <div class="kpi-value">19</div>
+        <div class="kpi-change flat">Jul 2025 – Jun 2026</div>
+      </div>
+    </div>
+
+    <!-- Portfolio Overview Table -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">All Profiles — Overview</h2>
+        <div style="font-size:12px;color:var(--muted)">Jul 2025 – Jun 2026 · Click a row to view profile detail</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="portTable">
+          <thead><tr>
+            <th>Profile</th>
+            <th class="num">Total Views</th>
+            <th class="num">Total Interactions</th>
+            <th class="num">Website Clicks</th>
+            <th class="num">Direction Requests</th>
+            <th class="num">Action Rate</th>
+          </tr></thead>
+          <tbody id="portTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile KPIs (shown when single profile selected) -->
+  <div id="profileKPIs" style="display:none">
+    <div class="summary-grid" id="profileKPICards"></div>
+  </div>
+
+  <!-- Profile chips -->
+  <div class="client-chips" id="clientChips"></div>
+
+  <!-- Profile detail (hidden when All selected) -->
+  <div id="profileDetail" style="display:none">
+    <div class="charts-row">
+      <div class="chart-box"><h3 id="t-views">Total Profile Views — Monthly</h3><canvas id="chartViews"></canvas></div>
+      <div class="chart-box"><h3>Customer Interactions — Monthly</h3><canvas id="chartInteractions"></canvas></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-box"><h3>View-to-Action Rate — Monthly %</h3><canvas id="chartActionRate"></canvas></div>
+      <div class="chart-box"><h3>Search vs Maps Views — Monthly</h3><canvas id="chartSearchMaps"></canvas></div>
+    </div>
+    <div class="charts-row-3">
+      <div class="chart-box" style="min-height:260px"><h3>Search Views — Desktop vs Mobile</h3><canvas id="chartSearchSplit"></canvas></div>
+      <div class="chart-box" style="min-height:260px"><h3>Maps Views — Desktop vs Mobile</h3><canvas id="chartMapsSplit"></canvas></div>
+      <div class="chart-box" style="min-height:260px"><h3>Interaction Types</h3><canvas id="chartIntTypes"></canvas></div>
+    </div>
+
+    <!-- Breakdown bars -->
+    <div class="section" style="margin-bottom:24px">
+      <div class="section-header">
+        <h2 class="section-title">View Source Breakdown</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);font-weight:600;margin-bottom:14px">By Platform &amp; Device</div>
+          <div class="breakdown-row"><div class="breakdown-label">Desktop Search</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-ds" style="background:#38bdf8"></div></div><div class="breakdown-count" id="bc-ds"></div><div class="breakdown-pct" id="bp-ds"></div></div>
+          <div class="breakdown-row"><div class="breakdown-label">Mobile Search</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-ms" style="background:rgba(56,189,248,0.45)"></div></div><div class="breakdown-count" id="bc-ms"></div><div class="breakdown-pct" id="bp-ms"></div></div>
+          <div class="breakdown-row"><div class="breakdown-label">Desktop Maps</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-dm" style="background:#10b981"></div></div><div class="breakdown-count" id="bc-dm"></div><div class="breakdown-pct" id="bp-dm"></div></div>
+          <div class="breakdown-row"><div class="breakdown-label">Mobile Maps</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-mm" style="background:rgba(16,185,129,0.45)"></div></div><div class="breakdown-count" id="bc-mm"></div><div class="breakdown-pct" id="bp-mm"></div></div>
+        </div>
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);font-weight:600;margin-bottom:14px">By Interaction Type</div>
+          <div class="breakdown-row"><div class="breakdown-label">Website Clicks</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-wc" style="background:#a78bfa"></div></div><div class="breakdown-count" id="bc-wc"></div><div class="breakdown-pct" id="bp-wc"></div></div>
+          <div class="breakdown-row"><div class="breakdown-label">Direction Requests</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-dr" style="background:#f59e0b"></div></div><div class="breakdown-count" id="bc-dr"></div><div class="breakdown-pct" id="bp-dr"></div></div>
+          <div class="breakdown-row"><div class="breakdown-label">Phone Calls</div><div class="breakdown-track"><div class="breakdown-fill" id="bd-ph" style="background:#ef4444"></div></div><div class="breakdown-count" id="bc-ph"></div><div class="breakdown-pct" id="bp-ph"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly table -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">Monthly Performance Table</h2>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Month</th>
+            <th class="num">Total Views</th>
+            <th class="num">Desktop Search</th>
+            <th class="num">Mobile Search</th>
+            <th class="num">Desktop Maps</th>
+            <th class="num">Mobile Maps</th>
+            <th class="num">Website Clicks</th>
+            <th class="num">Directions</th>
+            <th class="num">Total Actions</th>
+            <th class="num">Action Rate</th>
+          </tr></thead>
+          <tbody id="monthlyTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Keywords -->
+    <div class="section">
+      <div class="section-header">
+        <h2 class="section-title">Top Search Keywords</h2>
+        <div style="font-size:12px;color:var(--muted)">GBP Search Impressions · Jul 2025 – Jun 2026</div>
+      </div>
+      <div id="kwSection"></div>
+    </div>
+  </div>
+
+  <footer>Google Business Profile API · July 2025 – June 2026 · 19 profiles · Prepared for Amire</footer>
+</div>
+
+<script>
+const DATA = {"Amire":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[117,158,150,138,114,103,113,104,106,114,102,106],"desktopSearch":[41,66,73,74,57,41,53,50,49,50,46,34],"mobileSearch":[29,33,31,36,23,27,31,21,23,28,25,20],"desktopMaps":[35,38,29,17,16,27,18,17,20,28,22,32],"mobileMaps":[12,21,17,11,18,8,11,16,14,8,9,20],"websiteClicks":[14,11,21,10,8,5,4,2,3,6,7,4],"directionReq":[0,0,0,0,0,0,0,0,0,0,0,0],"phoneClicks":[0,0,0,0,0,0,0,1,0,0,0,0],"totalInt":[14,11,21,10,8,5,4,3,3,6,7,4],"keywords":[],"totViews":1425,"totInt":96,"totWC":95,"totDR":0,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[12.0,7.0,14.0,7.2,7.0,4.9,3.5,2.9,2.8,5.3,6.9,3.8],"searchTotal":[70,99,104,110,80,68,84,71,72,78,71,54],"mapsTotal":[47,59,46,28,34,35,29,33,34,36,31,52],"overallActionRate":6.7,"viewsDelta":-0.3,"intDelta":70.0},"Houspect (Victoria)":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[119,103,104,119,112,75,94,101,90,94,116,86],"desktopSearch":[50,44,49,37,25,16,32,32,21,37,30,22],"mobileSearch":[27,22,17,34,35,18,15,33,30,13,19,19],"desktopMaps":[16,20,14,23,27,22,21,18,25,22,35,24],"mobileMaps":[26,17,24,25,25,19,26,18,14,22,32,21],"websiteClicks":[3,2,2,3,2,1,4,1,3,3,2,3],"directionReq":[52,45,52,39,60,47,69,35,56,36,18,40],"phoneClicks":[0,1,2,3,0,0,0,0,0,1,1,1],"totalInt":[55,48,56,45,62,48,73,36,59,40,21,44],"keywords":[],"totViews":1213,"totInt":587,"totWC":29,"totDR":549,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[46.2,46.6,53.8,37.8,55.4,64.0,77.7,35.6,65.6,42.6,18.1,51.2],"searchTotal":[77,66,66,71,60,34,47,65,51,50,49,41],"mapsTotal":[42,37,38,48,52,41,47,36,39,44,67,45],"overallActionRate":48.4,"viewsDelta":3.9,"intDelta":-37.5},"Houspect (WA)":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[314,372,306,260,219,165,156,161,208,136,169,169],"desktopSearch":[156,177,178,156,129,84,71,97,119,90,102,95],"mobileSearch":[115,155,92,63,57,53,48,38,48,23,28,38],"desktopMaps":[30,22,20,17,18,14,16,17,25,16,29,24],"mobileMaps":[13,18,16,24,15,14,21,9,16,7,10,12],"websiteClicks":[24,21,11,13,13,11,5,8,11,12,11,10],"directionReq":[0,0,0,0,0,0,0,0,0,0,0,0],"phoneClicks":[5,11,6,1,1,2,2,6,6,2,2,5],"totalInt":[29,32,17,14,14,13,7,14,17,14,13,15],"keywords":[{"kw":"houspect","total":79},{"kw":"houspect victoria","total":17},{"kw":"building inspection","total":16}],"totViews":2635,"totInt":199,"totWC":150,"totDR":0,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[9.2,8.6,5.6,5.4,6.4,7.9,4.5,8.7,8.2,10.3,7.7,8.9],"searchTotal":[271,332,270,219,186,137,119,135,167,113,130,133],"mapsTotal":[43,40,36,41,33,28,37,26,41,23,39,36],"overallActionRate":7.6,"viewsDelta":-9.7,"intDelta":10.5},"Houspect (NSW)":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[296,402,368,344,267,207,222,202,239,209,228,199],"desktopSearch":[145,211,192,200,130,92,116,124,144,102,115,127],"mobileSearch":[81,135,125,92,80,54,59,46,55,46,36,27],"desktopMaps":[43,37,17,30,26,32,19,16,24,31,46,20],"mobileMaps":[27,19,34,22,31,29,28,16,16,30,31,25],"websiteClicks":[28,16,12,14,6,4,9,7,16,13,32,14],"directionReq":[55,68,33,31,56,60,73,60,37,35,48,30],"phoneClicks":[16,9,5,6,7,4,7,2,7,6,3,4],"totalInt":[99,93,50,51,69,68,89,69,60,54,83,48],"keywords":[{"kw":"houspect","total":307},{"kw":"houspect building inspections","total":33},{"kw":"housepect","total":16},{"kw":"houspect nsw","total":16}],"totViews":3183,"totInt":833,"totWC":171,"totDR":586,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[33.4,23.1,13.6,14.8,25.8,32.9,40.1,34.2,25.1,25.8,36.4,24.1],"searchTotal":[226,346,317,292,210,146,175,170,199,148,151,154],"mapsTotal":[70,56,51,52,57,61,47,32,40,61,77,45],"overallActionRate":26.2,"viewsDelta":-4.1,"intDelta":-15.1},"Limo Bus Sydney":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[329,594,688,859,1000,506,495,414,446,363,430,399],"desktopSearch":[119,221,264,342,340,157,159,144,150,124,135,144],"mobileSearch":[149,335,365,480,620,290,295,221,239,194,233,204],"desktopMaps":[31,22,22,14,13,10,15,15,18,11,38,33],"mobileMaps":[30,16,37,23,27,49,26,34,39,34,24,18],"websiteClicks":[22,39,42,62,41,22,28,37,28,14,32,24],"directionReq":[49,34,57,37,53,66,68,24,60,25,49,44],"phoneClicks":[3,0,9,7,9,4,1,3,1,2,4,2],"totalInt":[74,73,108,106,103,92,97,64,89,41,85,70],"keywords":[{"kw":"limousine bus","total":359},{"kw":"party bus","total":270},{"kw":"limo bus","total":224},{"kw":"party bus hire","total":134},{"kw":"party bus hire sydney","total":81}],"totViews":6523,"totInt":1002,"totWC":391,"totDR":566,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[22.5,12.3,15.7,12.3,10.3,18.2,19.6,15.5,20.0,11.3,19.8,17.5],"searchTotal":[268,556,629,822,960,447,454,365,389,318,368,348],"mapsTotal":[61,38,59,37,40,59,41,49,57,45,62,51],"overallActionRate":15.4,"viewsDelta":-12.0,"intDelta":-21.6},"Everest Pest Control":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[276,317,392,646,456,401,392,343,397,367,340,238],"desktopSearch":[87,100,125,192,161,143,167,179,190,149,161,114],"mobileSearch":[102,135,205,371,217,208,154,106,143,132,108,51],"desktopMaps":[55,42,32,38,26,26,20,23,27,52,40,50],"mobileMaps":[32,40,30,45,52,24,51,35,37,34,31,23],"websiteClicks":[19,24,47,43,59,53,44,59,60,53,38,25],"directionReq":[45,59,45,49,39,81,47,42,57,18,64,53],"phoneClicks":[14,8,31,28,24,37,23,46,43,36,38,18],"totalInt":[78,91,123,120,122,171,114,147,160,107,140,96],"keywords":[{"kw":"everest","total":222},{"kw":"pest control northern beaches","total":153},{"kw":"the everest","total":41},{"kw":"spider pest control sydney","total":28},{"kw":"pest control near me","total":20}],"totViews":4565,"totInt":1469,"totWC":524,"totDR":599,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[28.3,28.7,31.4,18.6,26.8,42.6,29.1,42.9,40.3,29.2,41.2,40.3],"searchTotal":[189,235,330,563,378,351,321,285,333,281,269,165],"mapsTotal":[87,82,62,83,78,50,71,58,64,86,71,73],"overallActionRate":32.2,"viewsDelta":-16.5,"intDelta":-18.5},"Brisbane Showgrounds":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[18065,76901,32471,34948,20998,25902,18976,9613,29519,23713,24855,19987],"desktopSearch":[2178,5445,3200,3861,2893,2127,2588,2178,3131,2964,3668,3263],"mobileSearch":[5718,28710,14541,13162,8261,6050,3175,1150,4105,2762,3094,1867],"desktopMaps":[2441,4953,2525,2344,1420,1463,1539,1594,2329,2043,2447,1999],"mobileMaps":[7728,37793,12205,15581,8424,16262,11674,4691,19954,15944,15646,12858],"websiteClicks":[1146,1948,779,1742,944,993,1504,508,1503,1446,1464,971],"directionReq":[6326,35929,9975,14513,6022,12560,9250,2441,16111,11525,12490,10516],"phoneClicks":[87,285,67,146,68,74,113,33,98,76,115,98],"totalInt":[7559,38162,10821,16401,7034,13627,10867,2982,17712,13047,14069,11585],"keywords":[{"kw":"brisbane showgrounds, gregory terrace, bowen hills qld","total":98317},{"kw":"brisbane showgrounds","total":17569},{"kw":"brisbane showgrounds, gregory terrace, bowen hills qld, australia","total":8401},{"kw":"brisbane festival","total":8037},{"kw":"brisbane showgrounds, 600 gregory ter, bowen hills qld 4006","total":4835}],"totViews":335948,"totInt":163866,"totWC":14948,"totDR":147658,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[41.8,49.6,33.3,46.9,33.5,52.6,57.3,31.0,60.0,55.0,56.6,58.0],"searchTotal":[7896,34155,17741,17023,11154,8177,5763,3328,7236,5726,6762,5130],"mapsTotal":[10169,42746,14730,17925,9844,17725,13213,6285,22283,17987,18093,14857],"overallActionRate":48.8,"viewsDelta":18.0,"intDelta":22.6},"WTG Townsville":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[763,1530,1164,1335,1411,811,751,563,675,590,672,689],"desktopSearch":[254,309,334,344,287,233,250,229,261,238,284,286],"mobileSearch":[347,1089,702,848,976,476,369,224,300,232,237,243],"desktopMaps":[44,35,28,47,44,25,30,26,24,21,49,34],"mobileMaps":[118,97,100,96,104,77,102,84,90,99,102,126],"websiteClicks":[67,53,49,49,53,33,31,58,45,42,50,55],"directionReq":[77,69,116,103,70,78,108,115,63,72,101,55],"phoneClicks":[323,267,309,298,278,199,200,202,267,239,243,310],"totalInt":[467,389,474,450,401,310,339,375,375,353,394,420],"keywords":[{"kw":"truck","total":1297},{"kw":"western truck group","total":681},{"kw":"western truck group townsville","total":350},{"kw":"western truck group - townsville, ingham road, bohle qld","total":295},{"kw":"truck sales","total":286}],"totViews":10954,"totInt":4747,"totWC":585,"totDR":1027,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[61.2,25.4,40.7,33.7,28.4,38.2,45.1,66.6,55.6,59.8,58.6,61.0],"searchTotal":[601,1398,1036,1192,1263,709,619,453,561,470,521,529],"mapsTotal":[162,132,128,143,148,102,132,110,114,120,151,160],"overallActionRate":43.3,"viewsDelta":-1.9,"intDelta":7.2},"WTG Toowoomba":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[1646,2895,2440,2817,2620,2059,1970,1885,1861,1647,1777,1725],"desktopSearch":[536,696,732,830,699,584,616,692,673,555,611,588],"mobileSearch":[846,1954,1461,1733,1662,1232,1080,949,910,888,922,896],"desktopMaps":[60,60,62,52,48,48,47,57,37,35,36,41],"mobileMaps":[204,185,185,202,211,195,227,187,241,169,208,200],"websiteClicks":[222,237,209,183,169,170,196,221,180,184,190,190],"directionReq":[179,145,153,210,159,148,190,158,199,148,97,141],"phoneClicks":[352,347,405,489,357,319,357,345,392,401,362,403],"totalInt":[753,729,767,882,685,637,743,724,771,733,649,734],"keywords":[{"kw":"western truck group","total":4704},{"kw":"truck","total":1289},{"kw":"western truck group - toowoomba, anzac avenue, harristown qld","total":911},{"kw":"volvo toowoomba","total":700},{"kw":"western truck group toowoomba","total":606}],"totViews":25342,"totInt":8807,"totWC":2351,"totDR":1927,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[45.7,25.2,31.4,31.3,26.1,30.9,37.7,38.4,41.4,44.5,36.5,42.6],"searchTotal":[1382,2650,2193,2563,2361,1816,1696,1641,1583,1443,1533,1484],"mapsTotal":[264,245,247,254,259,243,274,244,278,204,244,241],"overallActionRate":34.8,"viewsDelta":-9.9,"intDelta":-5.5},"WTG Sunshine Coast":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[708,1250,1064,1085,875,740,849,796,869,831,808,858],"desktopSearch":[219,288,317,370,293,222,263,283,300,258,255,261],"mobileSearch":[291,817,565,519,426,375,412,354,365,370,357,379],"desktopMaps":[44,37,41,33,40,17,46,32,62,71,67,71],"mobileMaps":[154,108,141,163,116,126,128,127,142,132,129,147],"websiteClicks":[47,33,31,34,40,35,49,49,52,31,31,62],"directionReq":[121,87,130,153,88,129,126,115,148,100,83,127],"phoneClicks":[229,197,193,259,159,163,209,199,200,233,203,213],"totalInt":[397,317,354,446,287,327,384,363,400,364,317,402],"keywords":[{"kw":"western truck group","total":2797},{"kw":"truck","total":353},{"kw":"western truck group - sunshine coast, empire crescent, chevallum qld","total":350},{"kw":"truck mechanic","total":153},{"kw":"western truck group - sunshine coast, 24 empire crescent, chevallum qld","total":119}],"totViews":10733,"totInt":4358,"totWC":494,"totDR":1407,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[56.1,25.4,33.3,41.1,32.8,44.2,45.2,45.6,46.0,43.8,39.2,46.9],"searchTotal":[510,1105,882,889,719,597,675,637,665,628,612,640],"mapsTotal":[198,145,182,196,156,143,174,159,204,203,196,218],"overallActionRate":40.6,"viewsDelta":-0.7,"intDelta":-5.6},"WTG Mackay":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[1278,2669,2016,1979,1833,1404,1414,1283,1306,1131,1203,1224],"desktopSearch":[412,574,540,583,476,385,464,456,417,400,399,408],"mobileSearch":[680,1912,1282,1220,1200,879,792,658,684,560,646,645],"desktopMaps":[54,41,42,42,27,28,35,40,44,45,34,23],"mobileMaps":[132,142,152,134,130,112,123,129,161,126,124,148],"websiteClicks":[73,103,68,93,75,59,85,79,82,77,76,57],"directionReq":[97,132,123,95,93,103,119,113,145,104,87,139],"phoneClicks":[459,507,445,507,420,348,485,446,487,431,453,489],"totalInt":[629,742,636,695,588,510,689,638,714,612,616,685],"keywords":[{"kw":"isuzu","total":1621},{"kw":"truck","total":1145},{"kw":"western truck group","total":720},{"kw":"western truck group mackay","total":658},{"kw":"truck sales","total":651}],"totViews":18740,"totInt":7754,"totWC":927,"totDR":1350,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[49.2,27.8,31.5,35.1,32.1,36.3,48.7,49.7,54.7,54.1,51.2,56.0],"searchTotal":[1092,2486,1822,1803,1676,1264,1256,1114,1101,960,1045,1053],"mapsTotal":[186,183,194,176,157,140,158,169,205,171,158,171],"overallActionRate":41.4,"viewsDelta":-11.1,"intDelta":-6.3},"WTG Dubbo":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[622,872,779,866,808,559,583,616,586,558,606,526],"desktopSearch":[242,246,245,296,274,161,197,248,224,181,213,173],"mobileSearch":[275,528,427,453,410,295,301,261,270,271,256,271],"desktopMaps":[32,29,33,33,22,26,20,29,18,24,21,20],"mobileMaps":[73,69,74,84,102,77,65,78,74,82,116,62],"websiteClicks":[66,61,50,58,44,36,42,45,55,47,60,48],"directionReq":[103,70,67,57,74,87,76,56,82,98,73,49],"phoneClicks":[199,134,164,201,221,169,145,163,185,153,176,149],"totalInt":[368,265,281,316,339,292,263,264,322,298,309,246],"keywords":[{"kw":"western truck group","total":990},{"kw":"western truck group dubbo","total":346},{"kw":"truck sales","total":223},{"kw":"western truck group - dubbo, richard ryan place, dubbo nsw","total":160},{"kw":"wtg dubbo","total":118}],"totViews":7981,"totInt":3563,"totWC":612,"totDR":892,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[59.2,30.4,36.1,36.5,42.0,52.2,45.1,42.9,54.9,53.4,51.0,46.8],"searchTotal":[517,774,672,749,684,456,498,509,494,452,469,444],"mapsTotal":[105,98,107,117,124,103,85,107,92,106,137,82],"overallActionRate":44.6,"viewsDelta":-5.3,"intDelta":0.5},"WTG Darwin":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[735,1348,1164,1175,1009,882,876,825,826,803,816,916],"desktopSearch":[188,307,313,341,292,238,281,310,299,258,258,285],"mobileSearch":[361,888,689,667,570,530,465,360,382,377,381,468],"desktopMaps":[40,33,35,43,26,22,22,40,28,36,34,26],"mobileMaps":[146,120,127,124,121,92,108,115,117,132,143,137],"websiteClicks":[76,46,37,39,35,36,36,24,52,22,36,63],"directionReq":[68,96,72,80,55,70,63,53,75,67,84,78],"phoneClicks":[176,172,153,169,163,129,94,124,129,108,169,161],"totalInt":[320,314,262,288,253,235,193,201,256,197,289,302],"keywords":[{"kw":"isuzu","total":508},{"kw":"truck sales","total":340},{"kw":"truck","total":301},{"kw":"western truck group - darwin, berrimah road, berrimah nt","total":217},{"kw":"isuzu trucks","total":194}],"totViews":11375,"totInt":3110,"totWC":502,"totDR":861,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[43.5,23.3,22.5,24.5,25.1,26.6,22.0,24.4,31.0,24.5,35.4,33.0],"searchTotal":[549,1195,1002,1008,862,768,746,670,681,635,639,753],"mapsTotal":[186,153,162,167,147,114,130,155,145,168,177,163],"overallActionRate":27.3,"viewsDelta":0.3,"intDelta":21.2},"WTG Cairns":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[509,913,787,838,594,511,468,372,416,361,323,388],"desktopSearch":[106,180,180,224,153,124,153,165,149,145,119,175],"mobileSearch":[310,649,518,521,383,330,238,142,171,165,135,143],"desktopMaps":[23,23,23,28,13,10,20,20,23,21,22,19],"mobileMaps":[70,61,66,65,45,47,57,45,73,30,47,51],"websiteClicks":[32,34,21,29,15,17,22,22,12,26,31,28],"directionReq":[74,90,58,78,40,74,46,79,77,52,68,56],"phoneClicks":[121,89,92,108,98,67,89,84,91,94,115,102],"totalInt":[227,213,171,215,153,158,157,185,180,172,214,186],"keywords":[{"kw":"truck sales","total":719},{"kw":"western truck group","total":105},{"kw":"kenworth","total":33},{"kw":"western truck group - cairns, buchan street, portsmith qld","total":16},{"kw":"western truck group cairns","total":16}],"totViews":6480,"totInt":2231,"totWC":289,"totDR":792,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[44.6,23.3,21.7,25.7,25.8,30.9,33.5,49.7,43.3,47.6,66.3,47.9],"searchTotal":[416,829,698,745,536,454,391,307,320,310,254,318],"mapsTotal":[93,84,89,93,58,57,77,65,96,51,69,70],"overallActionRate":34.4,"viewsDelta":-14.6,"intDelta":9.6},"REI NSW":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[3433,5813,5140,4818,4774,3860,3896,4616,4536,4092,4446,4414],"desktopSearch":[1551,1849,1905,1809,1733,1254,1133,1723,1877,1388,1666,1887],"mobileSearch":[1585,3678,2993,2772,2755,2297,2401,2540,2295,2384,2429,2196],"desktopMaps":[117,129,103,80,82,74,88,82,100,97,91,101],"mobileMaps":[180,157,139,157,204,235,274,271,264,223,260,230],"websiteClicks":[419,371,324,374,271,238,285,258,337,292,293,344],"directionReq":[87,111,77,43,93,93,69,92,101,92,105,137],"phoneClicks":[178,184,181,154,137,161,136,184,197,168,174,229],"totalInt":[684,666,582,571,501,492,490,534,635,552,572,710],"keywords":[{"kw":"rea","total":11107},{"kw":"rei","total":6906},{"kw":"reinsw","total":3463},{"kw":"rein","total":3113},{"kw":"rei nsw","total":1296}],"totViews":53838,"totInt":6989,"totWC":3806,"totDR":1100,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[19.9,11.5,11.3,11.9,10.5,12.7,12.6,11.6,14.0,13.5,12.9,16.1],"searchTotal":[3136,5527,4898,4581,4488,3551,3534,4263,4172,3772,4095,4083],"mapsTotal":[297,286,242,237,286,309,362,353,364,320,351,331],"overallActionRate":13.0,"viewsDelta":-0.7,"intDelta":10.5},"MGS Physio Manly":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[1064,1723,1707,1866,2847,2551,3110,3612,2647,2294,2432,1699],"desktopSearch":[252,476,519,627,1501,1363,1744,2001,1027,787,920,516],"mobileSearch":[423,867,831,852,943,881,972,1287,1268,1170,1216,887],"desktopMaps":[105,44,48,63,34,22,62,58,63,38,31,51],"mobileMaps":[284,336,309,324,369,285,332,266,289,299,265,245],"websiteClicks":[341,349,335,312,303,299,308,273,344,357,321,301],"directionReq":[131,115,91,88,167,129,148,122,116,106,135,136],"phoneClicks":[171,190,175,227,165,164,183,204,180,170,199,165],"totalInt":[643,654,601,627,635,592,639,599,640,633,655,602],"keywords":[{"kw":"mgs physio","total":3289},{"kw":"physio manly","total":3002},{"kw":"manly physio","total":2186},{"kw":"mgs","total":1698},{"kw":"physio near me","total":816}],"totViews":27552,"totInt":7520,"totWC":3843,"totDR":1484,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[60.4,38.0,35.2,33.6,22.3,23.2,20.5,16.6,24.2,27.6,26.9,35.4],"searchTotal":[675,1343,1350,1479,2444,2244,2716,3288,2295,1957,2136,1403],"mapsTotal":[389,380,357,387,403,307,394,324,352,337,296,296],"overallActionRate":27.3,"viewsDelta":-31.4,"intDelta":0.6},"MGS Physio Mona Vale":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[712,1187,1180,1092,1201,957,1113,1211,1211,1256,1253,1246],"desktopSearch":[198,364,411,375,428,271,335,416,367,457,397,390],"mobileSearch":[346,664,628,597,644,579,655,681,727,669,708,713],"desktopMaps":[39,45,45,28,25,25,30,16,28,32,37,36],"mobileMaps":[129,114,96,92,104,82,93,98,89,98,111,107],"websiteClicks":[183,216,195,142,153,124,167,152,148,146,142,145],"directionReq":[81,70,71,55,68,66,58,58,75,48,106,96],"phoneClicks":[99,109,103,95,69,70,83,80,107,87,96,100],"totalInt":[363,395,369,292,290,260,308,290,330,281,344,341],"keywords":[{"kw":"mgs physio","total":2727},{"kw":"physio mona vale","total":1141},{"kw":"mgs","total":987},{"kw":"mona vale physio","total":525},{"kw":"mgs physiotherapy","total":304}],"totViews":13619,"totInt":3863,"totWC":1913,"totDR":852,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[51.0,33.3,31.3,26.7,24.1,27.2,27.7,23.9,27.3,22.4,27.5,27.4],"searchTotal":[544,1028,1039,972,1072,850,990,1097,1094,1126,1105,1103],"mapsTotal":[168,159,141,120,129,107,123,114,117,130,148,143],"overallActionRate":28.4,"viewsDelta":6.2,"intDelta":4.1},"MGS Physio N Curl Curl":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[568,949,1018,1130,1871,1519,1766,1860,1435,1240,1398,1137],"desktopSearch":[138,300,333,411,1112,822,989,1083,573,455,611,372],"mobileSearch":[217,467,483,550,601,558,617,651,706,641,654,632],"desktopMaps":[111,74,87,46,35,28,43,32,24,27,32,27],"mobileMaps":[102,108,115,123,123,111,117,94,132,117,101,106],"websiteClicks":[137,145,123,123,120,125,126,82,134,93,129,111],"directionReq":[85,90,69,113,99,97,110,62,85,91,85,92],"phoneClicks":[59,64,66,83,92,80,57,53,70,56,66,55],"totalInt":[281,299,258,319,311,302,293,197,289,240,280,258],"keywords":[{"kw":"mgs physio","total":3221},{"kw":"mgs","total":919},{"kw":"physio manly","total":608},{"kw":"manly physio","total":594},{"kw":"physio near me","total":561}],"totViews":15891,"totInt":3327,"totWC":1448,"totDR":1078,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[49.5,31.5,25.3,28.2,16.6,19.9,16.6,10.6,20.1,19.4,20.0,22.7],"searchTotal":[355,767,816,961,1713,1380,1606,1734,1279,1096,1265,1004],"mapsTotal":[213,182,202,169,158,139,160,126,156,144,133,133],"overallActionRate":20.9,"viewsDelta":-25.4,"intDelta":-0.1},"Creative Canvas":{"months":["2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06"],"totalViews":[336,481,577,781,742,526,581,530,703,800,591,618],"desktopSearch":[156,210,207,318,240,174,180,255,281,287,197,237],"mobileSearch":[115,214,317,399,433,298,343,238,372,437,348,307],"desktopMaps":[27,29,21,30,28,23,23,15,28,27,23,19],"mobileMaps":[38,28,32,34,41,31,35,22,22,49,23,55],"websiteClicks":[33,53,53,70,50,42,48,33,52,63,42,41],"directionReq":[42,54,44,26,46,52,66,22,47,43,34,36],"phoneClicks":[16,22,25,20,20,19,20,22,19,13,14,12],"totalInt":[91,129,122,116,116,113,134,77,118,119,90,89],"keywords":[{"kw":"creative canvas","total":291},{"kw":"awning","total":127},{"kw":"canvas awnings","total":16}],"totViews":7266,"totInt":1314,"totWC":580,"totDR":512,"monthLabels":["Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"actionRate":[27.1,26.8,21.1,14.9,15.6,21.5,23.1,14.5,16.8,14.9,15.2,14.4],"searchTotal":[271,424,524,717,673,472,523,493,653,724,545,544],"mapsTotal":[65,57,53,64,69,54,58,37,50,76,46,74],"overallActionRate":18.1,"viewsDelta":10.7,"intDelta":-9.4}};
+const PROFILE_NAMES = ["Amire", "Houspect (Victoria)", "Houspect (WA)", "Houspect (NSW)", "Limo Bus Sydney", "Everest Pest Control", "Brisbane Showgrounds", "WTG Townsville", "WTG Toowoomba", "WTG Sunshine Coast", "WTG Mackay", "WTG Dubbo", "WTG Darwin", "WTG Cairns", "REI NSW", "MGS Physio Manly", "MGS Physio Mona Vale", "MGS Physio N Curl Curl", "Creative Canvas"];
+
+let currentProfile = '__all__';
+let charts = {};
+
+function sum(arr){ return arr.reduce((a,b)=>a+b,0); }
+function pct(a,b){ return b>0?Math.round(a/b*1000)/10:0; }
+function fmt(n){ return n.toLocaleString(); }
+function pctBadge(r){
+  if(r>=20) return `<span class="pct up">${r}%</span>`;
+  if(r>=8)  return `<span class="pct warn">${r}%</span>`;
+  return `<span class="pct flat">${r}%</span>`;
+}
+function deltaBadge(d){
+  if(d>0) return `<span class="kpi-change up">↑ ${d}% vs prior 3 months</span>`;
+  if(d<0) return `<span class="kpi-change down">↓ ${Math.abs(d)}% vs prior 3 months</span>`;
+  return `<span class="kpi-change flat">Stable vs prior 3 months</span>`;
+}
+
+const AXIS = {
+  x:{ticks:{color:'#94a3b8',font:{size:10},maxRotation:45,minRotation:30},grid:{color:'#334155'}},
+  y:{beginAtZero:true,ticks:{color:'#94a3b8',font:{size:10},callback:v=>v.toLocaleString()},grid:{color:'#334155'}}
+};
+const BASE = {
+  responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{mode:'index',intersect:false}},
+  interaction:{mode:'index',intersect:false},
+  scales:AXIS
+};
+
+function destroyCharts(){
+  Object.values(charts).forEach(c=>{ try{c.destroy()}catch(e){} });
+  charts={};
+}
+
+function renderChips(){
+  const wrap = document.getElementById('clientChips');
+  let html = `<div class="chip ${currentProfile==='__all__'?'active':''}" data-p="__all__">All Profiles</div>`;
+  PROFILE_NAMES.forEach(n=>{
+    html += `<div class="chip ${currentProfile===n?'active':''}" data-p="${n.replace(/"/g,'&quot;')}">${n}</div>`;
+  });
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.chip').forEach(el=>el.addEventListener('click',()=>setProfile(el.dataset.p)));
+}
+
+function setProfile(name){
+  currentProfile = name;
+  renderAll();
+}
+
+function renderPortfolioTable(){
+  const tbody = document.getElementById('portTableBody');
+  let html = '';
+  PROFILE_NAMES.forEach(name=>{
+    const d = DATA[name];
+    const rate = pct(d.totInt, d.totViews);
+    html += `<tr style="cursor:pointer" onclick="setProfile('${name}')" title="Click to view ${name}">
+      <td style="font-weight:600;color:var(--text)">${name}</td>
+      <td class="num">${fmt(d.totViews)}</td>
+      <td class="num">${fmt(d.totInt)}</td>
+      <td class="num">${fmt(d.totWC)}</td>
+      <td class="num">${fmt(d.totDR)}</td>
+      <td class="num">${pctBadge(rate)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function renderProfileKPIs(d){
+  const tv=d.totViews, ti=d.totInt, wc=d.totWC, dr=d.totDR;
+  const rate=pct(ti,tv);
+  document.getElementById('profileKPICards').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">Total Views</div><div class="kpi-value" style="color:var(--accent)">${fmt(tv)}</div>${deltaBadge(d.viewsDelta)}<div class="kpi-change flat">12-month total</div></div>
+    <div class="kpi-card"><div class="kpi-label">Total Interactions</div><div class="kpi-value" style="color:var(--accent2)">${fmt(ti)}</div>${deltaBadge(d.intDelta)}<div class="kpi-change flat">12-month total</div></div>
+    <div class="kpi-card"><div class="kpi-label">Website Clicks</div><div class="kpi-value" style="color:var(--good)">${fmt(wc)}</div><div class="kpi-change flat">${pct(wc,ti)}% of interactions</div></div>
+    <div class="kpi-card"><div class="kpi-label">Direction Requests</div><div class="kpi-value" style="color:var(--warn)">${fmt(dr)}</div><div class="kpi-change flat">${pct(dr,ti)}% of interactions</div></div>
+    <div class="kpi-card"><div class="kpi-label">Avg Monthly Views</div><div class="kpi-value">${Math.round(tv/d.monthLabels.length)}</div><div class="kpi-change flat">Per month average</div></div>
+    <div class="kpi-card"><div class="kpi-label">Action Rate</div><div class="kpi-value">${rate}%</div><div class="kpi-change flat">Views that became actions</div></div>
+  `;
+}
+
+function renderBreakdown(d){
+  const tv=d.totViews, ti=d.totInt;
+  const sumDS=sum(d.desktopSearch), sumMS=sum(d.mobileSearch), sumDM=sum(d.desktopMaps), sumMM=sum(d.mobileMaps);
+  const sumWC=d.totWC, sumDR=d.totDR, sumPH=sum(d.phoneClicks);
+  function bar(id,val,total,fmt_val){
+    const p=pct(val,total);
+    document.getElementById('bd-'+id).style.width=p+'%';
+    document.getElementById('bc-'+id).textContent=fmt(val);
+    document.getElementById('bp-'+id).textContent=p+'%';
+  }
+  bar('ds',sumDS,tv); bar('ms',sumMS,tv); bar('dm',sumDM,tv); bar('mm',sumMM,tv);
+  bar('wc',sumWC,ti); bar('dr',sumDR,ti); bar('ph',sumPH,ti);
+}
+
+function renderMonthlyTable(d){
+  const tbody = document.getElementById('monthlyTable');
+  let html='';
+  d.monthLabels.forEach((m,i)=>{
+    const v=d.totalViews[i], ti=d.totalInt[i];
+    const r=v>0?Math.round(ti/v*1000)/10:0;
+    const prev=i>0?d.totalViews[i-1]:null;
+    const chg=prev?(((v-prev)/prev)*100).toFixed(1):null;
+    const chgHtml=chg?(parseFloat(chg)>=0?`<span style="font-size:11px;color:var(--good)"> ↑${chg}%</span>`:`<span style="font-size:11px;color:var(--bad)"> ↓${Math.abs(chg)}%</span>`):'';
+    html+=`<tr>
+      <td style="font-weight:600">${m}</td>
+      <td class="num">${v}${chgHtml}</td>
+      <td class="num">${d.desktopSearch[i]}</td>
+      <td class="num">${d.mobileSearch[i]}</td>
+      <td class="num">${d.desktopMaps[i]}</td>
+      <td class="num">${d.mobileMaps[i]}</td>
+      <td class="num">${d.websiteClicks[i]}</td>
+      <td class="num">${d.directionReq[i]}</td>
+      <td class="num">${ti}</td>
+      <td class="num">${pctBadge(r)}</td>
+    </tr>`;
+  });
+  // Totals
+  const tv2=sum(d.totalViews),ti2=sum(d.totalInt);
+  html+=`<tr style="background:var(--panel2);font-weight:600">
+    <td>TOTAL</td>
+    <td class="num">${fmt(tv2)}</td>
+    <td class="num">${fmt(sum(d.desktopSearch))}</td>
+    <td class="num">${fmt(sum(d.mobileSearch))}</td>
+    <td class="num">${fmt(sum(d.desktopMaps))}</td>
+    <td class="num">${fmt(sum(d.mobileMaps))}</td>
+    <td class="num">${fmt(d.totWC)}</td>
+    <td class="num">${fmt(d.totDR)}</td>
+    <td class="num">${fmt(ti2)}</td>
+    <td class="num">${pctBadge(Math.round(ti2/tv2*1000)/10)}</td>
+  </tr>`;
+  tbody.innerHTML=html;
+}
+
+function renderKeywords(d){
+  const el=document.getElementById('kwSection');
+  if(!d.keywords || d.keywords.length===0){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">No keyword impression data above threshold for this profile in this period. GBP suppresses low-volume terms.</div>';
+    return;
+  }
+  let html='<table><thead><tr><th>Keyword</th><th class="num">Total Impressions</th></tr></thead><tbody>';
+  d.keywords.forEach(kw=>{
+    html+=`<tr><td class="kw-name">${kw.kw}</td><td class="num">${fmt(kw.total)}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+function renderCharts(d){
+  destroyCharts();
+  const ml=d.monthLabels;
+
+  charts.views = new Chart(document.getElementById('chartViews'),{
+    type:'bar',
+    data:{labels:ml,datasets:[{label:'Total Views',data:d.totalViews,
+      backgroundColor:d.totalViews.map(v=>v>=d.totViews/d.monthLabels.length*1.1?'#38bdf8':'rgba(56,189,248,0.45)'),borderRadius:4}]},
+    options:{...BASE,plugins:{...BASE.plugins,legend:{display:false}}}
+  });
+
+  charts.int = new Chart(document.getElementById('chartInteractions'),{
+    type:'bar',
+    data:{labels:ml,datasets:[
+      {label:'Website Clicks',data:d.websiteClicks,backgroundColor:'#a78bfa',borderRadius:3},
+      {label:'Direction Requests',data:d.directionReq,backgroundColor:'#f59e0b',borderRadius:3},
+      {label:'Phone Clicks',data:d.phoneClicks,backgroundColor:'#ef4444',borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{mode:'index',intersect:false}},
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{stacked:true,ticks:{color:'#94a3b8',font:{size:10},maxRotation:45,minRotation:30},grid:{color:'#334155'}},
+        y:{stacked:true,beginAtZero:true,ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'#334155'}}
+      }
+    }
+  });
+
+  charts.rate = new Chart(document.getElementById('chartActionRate'),{
+    type:'line',
+    data:{labels:ml,datasets:[{label:'Action Rate %',data:d.actionRate,
+      borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.12)',tension:0.35,fill:true,pointRadius:4,pointHoverRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>' '+ctx.raw+'%'}}},
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{ticks:{color:'#94a3b8',font:{size:10},maxRotation:45,minRotation:30},grid:{color:'#334155'}},
+        y:{beginAtZero:true,ticks:{color:'#94a3b8',font:{size:10},callback:v=>v+'%'},grid:{color:'#334155'}}
+      }
+    }
+  });
+
+  charts.searchMaps = new Chart(document.getElementById('chartSearchMaps'),{
+    type:'line',
+    data:{labels:ml,datasets:[
+      {label:'Search Views',data:d.searchTotal,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.15)',tension:0.3,fill:true,pointRadius:3},
+      {label:'Maps Views',data:d.mapsTotal,borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.15)',tension:0.3,fill:true,pointRadius:3}
+    ]},
+    options:BASE
+  });
+
+  const stackOpts = (s1,s2,c1,c2)=>{return {
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#94a3b8',font:{size:10}}},tooltip:{mode:'index',intersect:false}},
+    interaction:{mode:'index',intersect:false},
+    scales:{
+      x:{stacked:true,ticks:{color:'#94a3b8',font:{size:9},maxRotation:45,minRotation:30},grid:{display:false}},
+      y:{stacked:true,beginAtZero:true,ticks:{color:'#94a3b8',font:{size:10}},grid:{color:'#334155'}}
+    }
+  }};
+
+  charts.searchSplit = new Chart(document.getElementById('chartSearchSplit'),{
+    type:'bar',
+    data:{labels:ml,datasets:[
+      {label:'Desktop Search',data:d.desktopSearch,backgroundColor:'#38bdf8',borderRadius:3},
+      {label:'Mobile Search',data:d.mobileSearch,backgroundColor:'rgba(56,189,248,0.4)',borderRadius:3}
+    ]},
+    options:stackOpts()
+  });
+
+  charts.mapsSplit = new Chart(document.getElementById('chartMapsSplit'),{
+    type:'bar',
+    data:{labels:ml,datasets:[
+      {label:'Desktop Maps',data:d.desktopMaps,backgroundColor:'#10b981',borderRadius:3},
+      {label:'Mobile Maps',data:d.mobileMaps,backgroundColor:'rgba(16,185,129,0.4)',borderRadius:3}
+    ]},
+    options:stackOpts()
+  });
+
+  charts.intTypes = new Chart(document.getElementById('chartIntTypes'),{
+    type:'bar',
+    data:{labels:ml,datasets:[
+      {label:'Website Clicks',data:d.websiteClicks,backgroundColor:'#a78bfa',borderRadius:3},
+      {label:'Direction Requests',data:d.directionReq,backgroundColor:'#f59e0b',borderRadius:3}
+    ]},
+    options:stackOpts()
+  });
+}
+
+function renderAll(){
+  renderChips();
+  const all = currentProfile==='__all__';
+  document.getElementById('portfolioKPIs').style.display = all?'':'none';
+  document.getElementById('profileKPIs').style.display  = all?'none':'';
+  document.getElementById('profileDetail').style.display = all?'none':'';
+  document.getElementById('dashSubtitle').textContent = all
+    ? `Portfolio overview · 19 profiles · July 2025 – June 2026`
+    : `${currentProfile} · July 2025 – June 2026`;
+  document.getElementById('portBadge').textContent = all ? '19 PROFILES' : currentProfile;
+
+  if(all){
+    renderPortfolioTable();
+    destroyCharts();
+  } else {
+    const d = DATA[currentProfile];
+    renderProfileKPIs(d);
+    renderCharts(d);
+    renderBreakdown(d);
+    renderMonthlyTable(d);
+    renderKeywords(d);
+  }
+}
+
+renderAll();
+</script>
+</body>
+</html>
